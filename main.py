@@ -39,9 +39,9 @@ class Handler(webapp2.RequestHandler):
 		self.write(self.render_str(template, **kw))
 
 class MainPage(Handler):
-    def get(self):
-    	posts = db.GqlQuery("SELECT * FROM Post ORDER BY created DESC")
-        self.render("main.html", posts=posts)
+	def get(self):
+		posts = db.GqlQuery("SELECT * FROM Post ORDER BY created DESC")
+		self.render("main.html", posts=posts)
 
 class NewPost(Handler):
 	def render_new(self, subject="", content="", error=""):
@@ -74,5 +74,4 @@ app = webapp2.WSGIApplication([
 	('/newpost', NewPost),
 	(r'/(\d+)', AddedPost)
 	],
-                              debug=True)
-
+	debug=True)
