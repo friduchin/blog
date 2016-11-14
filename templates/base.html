@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<title>Blog</title>
+	</head>
+
+	<style type="text/css">
+		body {
+			width: 800px;
+			margin: auto;
+		}
+
+		textarea {
+			width: 400px;
+			height: 200px;
+		}
+
+		label {
+			display: block;
+			margin-top: 20px;
+		}
+
+		.error {
+			color: red;
+			margin-top: 10px;
+			margin-bottom: 10px;
+		}
+
+		.post-subject {
+			border-bottom: 1px solid grey;
+			font-size: 20px;
+			margin-top: 20px;
+		}
+	</style>
+
+	<body>
+		{% block content %}
+		{% endblock %}
+	</body>
+</html>
