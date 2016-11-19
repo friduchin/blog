@@ -15,6 +15,9 @@
 import os
 import jinja2
 import webapp2
+import random
+import string
+import hashlib
 
 from google.appengine.ext import db
 
@@ -22,10 +25,30 @@ template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 								autoescape = True)
 
+def make_salt():
+	return ''.join(random.choice(string.letters) for i in range(5))
+
+def make_pwd_hash(name, pwd, salt = None):
+	if not salt:
+		salt = make_salt()
+	h = hashlib.sha256(name + pwd + salt).hexdigest()
+	return (h, salt)
+
+def valid_cookie(cookie):
+		(id, hash) = cookie.split("|")
+		user = User.get_by_id(long(id))
+		if user:
+			return hash == User.get_by_id(long(id)).pwd_hash
+
 class Post(db.Model):
 	subject = db.StringProperty(required = True)
 	content = db.TextProperty(required = True)
 	created = db.DateTimeProperty(auto_now_add = True)
+
+class User(db.Model):
+	name = db.StringProperty(required = True)
+	pwd_hash = db.StringProperty(required = True)
+	salt = db.StringProperty(required = True)
 
 class Handler(webapp2.RequestHandler):
 	def write(self, *a, **kw):
@@ -42,6 +65,46 @@ class MainPage(Handler):
 	def get(self):
 		posts = db.GqlQuery("SELECT * FROM Post ORDER BY created DESC")
 		self.render("main.html", posts=posts)
+
+class SignUp(Handler):
+	def render_signup(self, username="", email="", error="", v_error=""):
+		self.render("signup.html", username=username, email=email, error=error, v_error=v_error)
+
+	def get(self):
+		self.render_signup()
+
+	def post(self):
+		username = self.request.get("username")
+		password = self.request.get("password")
+		verify = self.request.get("verify")
+		email = self.request.get("email")
+
+		if username and password and verify:
+			if password == verify:
+				pwd = make_pwd_hash(username, password)
+				u = User(name = username, pwd_hash = pwd[0], salt = pwd[1])
+				u.put()
+				user_id = u.key().id()
+				cookie = '%s|%s' % (user_id, pwd[0])
+				self.response.headers.add_header("Set-Cookie", "user_id=%s; Path=/" % cookie)
+				self.redirect("/welcome")
+			else:
+				v_error = "Passwords didn't match"
+				self.render_signup(username, email, "", v_error)
+		else:
+			error = "Please, enter username, password and verify password"
+			self.render_signup(username, email, error)
+
+class Welcome(Handler):
+
+	def get(self):
+		cookie = self.request.cookies.get("user_id")
+		if valid_cookie(cookie):
+			id = cookie.split("|")[0]
+			username = User.get_by_id(long(id)).name
+			self.write("Hello, %s!" % username)
+		else:
+			self.redirect("/signup")
 
 class NewPost(Handler):
 	def render_new(self, subject="", content="", error=""):
@@ -72,6 +135,8 @@ class AddedPost(Handler):
 app = webapp2.WSGIApplication([
 	('/', MainPage),
 	('/newpost', NewPost),
-	(r'/(\d+)', AddedPost)
+	(r'/(\d+)', AddedPost),
+	('/signup', SignUp),
+	('/welcome', Welcome)
 	],
 	debug=True)
