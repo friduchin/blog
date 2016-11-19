@@ -40,6 +40,13 @@ def valid_cookie(cookie):
 		if user:
 			return hash == User.get_by_id(long(id)).pwd_hash
 
+def valid_pwd(name, pwd):
+	users = db.GqlQuery("SELECT * FROM User WHERE name = '%s'" % name)
+	if users:
+		salt = users[0].salt
+		if make_pwd_hash(name, pwd, salt)[0] == users[0].pwd_hash:
+			return users[0].key().id()
+
 class Post(db.Model):
 	subject = db.StringProperty(required = True)
 	content = db.TextProperty(required = True)
@@ -95,6 +102,27 @@ class SignUp(Handler):
 			error = "Please, enter username, password and verify password"
 			self.render_signup(username, email, error)
 
+class LogIn(Handler):
+	def render_login(self, username="", error=""):
+		self.render("login.html", username=username, error=error)
+
+	def get(self):
+		self.render_login()
+
+	def post(self):
+		username = self.request.get("username")
+		password = self.request.get("password")
+		if username and password:
+			id = valid_pwd(username, password)
+			if id:
+				cookie = '%s|%s' % (str(id), str(User.get_by_id(id).pwd_hash))
+				self.response.headers.add_header("Set-Cookie", "user_id=%s; Path=/" % cookie)
+				self.redirect("/welcome")
+			else:
+				self.render_login(username, "Invaid login")
+		else:
+			self.render_login(username, "Please, enter both username and password")
+
 class Welcome(Handler):
 
 	def get(self):
@@ -137,6 +165,7 @@ app = webapp2.WSGIApplication([
 	('/newpost', NewPost),
 	(r'/(\d+)', AddedPost),
 	('/signup', SignUp),
+	('/login', LogIn),
 	('/welcome', Welcome)
 	],
 	debug=True)
