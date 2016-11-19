@@ -41,11 +41,11 @@ def valid_cookie(cookie):
 			return hash == User.get_by_id(long(id)).pwd_hash
 
 def valid_pwd(name, pwd):
-	users = db.GqlQuery("SELECT * FROM User WHERE name = '%s'" % name)
-	if users:
-		salt = users[0].salt
-		if make_pwd_hash(name, pwd, salt)[0] == users[0].pwd_hash:
-			return users[0].key().id()
+	user = db.GqlQuery("SELECT * FROM User WHERE name = '%s'" % name).fetch(1)
+	if user:
+		salt = user[0].salt
+		if make_pwd_hash(name, pwd, salt)[0] == user[0].pwd_hash:
+			return user[0].key().id()
 
 class Post(db.Model):
 	subject = db.StringProperty(required = True)
