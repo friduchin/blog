@@ -219,7 +219,7 @@ class NewPost(Handler):
             error = 'Please, enter both a subject and some content!'
             self.render_new(subject, content, error)
 
-class AddedPost(Handler):
+class PostPage(Handler):
     def get(self, id):
         post = Post.get_by_id(int(id))
         if not post:
@@ -282,7 +282,7 @@ class EditPost(Handler):
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/newpost', NewPost),
-    ('/([0-9]+)', AddedPost),
+    ('/([0-9]+)', PostPage),
     ('/signup', SignUp),
     ('/login', LogIn),
     ('/logout', LogOut),
