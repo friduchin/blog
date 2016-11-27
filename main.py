@@ -82,6 +82,9 @@ class User(db.Model):
         if u and valid_pwd(name, pw, u.pwd_hash):
             return u
 
+class Likes(db.Model):
+    user = db.IntegerProperty(required = True)
+
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -225,7 +228,32 @@ class PostPage(Handler):
         if not post:
             self.error(404)
             return
-        self.render('post.html', post=post)
+        if self.user:
+            user_id = self.user.key().id()
+            if Likes.all().ancestor(post).filter('user =', user_id).get():
+                vote = 'unlike'
+            else:
+                vote = 'like'
+            self.render('post.html', post=post, vote=vote)
+        else:
+            self.render('post.html', post=post)
+
+    def post(self, id):
+        if not self.user:
+            self.redirect('/')
+
+        post = Post.get_by_id(int(id))
+        user_id = self.user.key().id()
+        if user_id == post.creator:
+            self.write('You are not allowed to like your own post')
+        else:
+            l = Likes.all().ancestor(post.key()).filter('user =', user_id).get()
+            if l:
+                l.delete()
+            else:
+                like = Likes(parent=post, user=user_id)
+                like.put()
+            self.redirect('/%s' % id)
 
 class DeletePost(Handler):
     def get(self, id):
@@ -259,7 +287,7 @@ class EditPost(Handler):
 
     def post(self, id):
         if not self.user:
-            self.redirect('/blog')
+            self.redirect('/')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
