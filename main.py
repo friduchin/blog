@@ -201,7 +201,6 @@ class NewPost(Handler):
         else:
             self.redirect("/login")
 
-
     def post(self):
         if not self.user:
             self.redirect('/blog')
@@ -236,11 +235,49 @@ class DeletePost(Handler):
         elif not self.user.key().id() == post.creator:
             self.write('You are not allowed to delete this post')
         else:
-            self.render('delete-post.html', post_id = post.key().id())
+            self.render('delete-post.html', post_id=id)
 
     def post(self, id):
         post = Post.get_by_id(int(id))
         post.delete()
+
+class EditPost(Handler):
+    def get(self, id):
+        post = Post.get_by_id(int(id))
+        if not self.user:
+            self.redirect("/login")
+        elif not self.user.key().id() == post.creator:
+            self.write('You are not allowed to edit this post')
+        else:
+            subject = post.subject
+            content = post.content
+            self.render(
+                'edit-post.html',
+                subject=subject,
+                content=content,
+                post_id=id)
+
+    def post(self, id):
+        if not self.user:
+            self.redirect('/blog')
+
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+
+        if subject and content:
+            p = Post.get_by_id(int(id))
+            p.subject = subject
+            p.content = content
+            p.put()
+            self.redirect('/%s' % id)
+        else:
+            error = 'Please, enter both a subject and some content!'
+            self.render(
+                'edit-post.html',
+                subject=subject,
+                content=content,
+                error=error,
+                id=id)
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
@@ -250,6 +287,7 @@ app = webapp2.WSGIApplication([
     ('/login', LogIn),
     ('/logout', LogOut),
     ('/welcome', Welcome),
-    ('/([0-9]+)/delete', DeletePost)
+    ('/([0-9]+)/delete', DeletePost),
+    ('/([0-9]+)/edit', EditPost)
     ],
     debug=True)
