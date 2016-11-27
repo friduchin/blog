@@ -192,7 +192,7 @@ class Welcome(Handler):
 
 class NewPost(Handler):
     def render_new(self, subject='', content='', error=''):
-        self.render('newpost.html', subject=subject, content=content, error=error)
+        self.render('new-post.html', subject=subject, content=content, error=error)
 
     def get(self):
         if self.user:
