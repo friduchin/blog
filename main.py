@@ -59,6 +59,7 @@ def valid_pwd(name, pwd, pwd_hash):
 class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
+    creator = db.IntegerProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
 
 class User(db.Model):
@@ -207,9 +208,10 @@ class NewPost(Handler):
 
         subject = self.request.get('subject')
         content = self.request.get('content')
+        creator = self.user.key().id()
 
         if subject and content:
-            p = Post(subject = subject, content = content)
+            p = Post(subject = subject, content = content, creator = creator)
             p.put()
             path = '/' + str(p.key().id())
 
@@ -226,13 +228,28 @@ class AddedPost(Handler):
             return
         self.render('post.html', post=post)
 
+class DeletePost(Handler):
+    def get(self, id):
+        post = Post.get_by_id(int(id))
+        if not self.user:
+            self.redirect("/login")
+        elif not self.user.key().id() == post.creator:
+            self.write('You are not allowed to delete this post')
+        else:
+            self.render('delete-post.html', post_id = post.key().id())
+
+    def post(self, id):
+        post = Post.get_by_id(int(id))
+        post.delete()
+
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/newpost', NewPost),
-    (r'/(\d+)', AddedPost),
+    ('/([0-9]+)', AddedPost),
     ('/signup', SignUp),
     ('/login', LogIn),
     ('/logout', LogOut),
-    ('/welcome', Welcome)
+    ('/welcome', Welcome),
+    ('/([0-9]+)/delete', DeletePost)
     ],
     debug=True)
