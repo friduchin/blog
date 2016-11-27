@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+	<div>Are you sure you want to delete this post?</div>
+	<form method="post">
+		<input type="submit" value="Confirm">
+	</form>
+	<a href="/{{post_id}}">Cancel and go back to post</a>
+{% endblock %}
