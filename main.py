@@ -85,6 +85,10 @@ class User(db.Model):
 class Likes(db.Model):
     user = db.IntegerProperty(required = True)
 
+class Comment(db.Model):
+    author = db.StringProperty(required = True)
+    content = db.TextProperty(required = True)
+
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -225,6 +229,7 @@ class NewPost(Handler):
 class PostPage(Handler):
     def get(self, id):
         post = Post.get_by_id(int(id))
+        comments = Comment.all().ancestor(post)
         if not post:
             self.error(404)
             return
@@ -234,9 +239,9 @@ class PostPage(Handler):
                 vote = 'unlike'
             else:
                 vote = 'like'
-            self.render('post.html', post=post, vote=vote)
+            self.render('post.html', post=post, vote=vote, comments=comments)
         else:
-            self.render('post.html', post=post)
+            self.render('post.html', post=post, comments=comments)
 
     def post(self, id):
         if not self.user:
@@ -307,6 +312,33 @@ class EditPost(Handler):
                 error=error,
                 id=id)
 
+class AddComment(Handler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect("/login")
+        else:
+            self.render('comment.html')
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/')
+
+        content = self.request.get('content')
+
+        if content:
+            comment = Comment(
+                parent=Post.get_by_id(int(post_id)),
+                content=content,
+                author=self.user.name)
+            comment.put()
+            self.redirect('/%s' % post_id)
+        else:
+            error = 'Please, enter some content!'
+            self.render(
+                'comment.html',
+                content=content,
+                error=error)
+
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/newpost', NewPost),
@@ -316,6 +348,7 @@ app = webapp2.WSGIApplication([
     ('/logout', LogOut),
     ('/welcome', Welcome),
     ('/([0-9]+)/delete', DeletePost),
-    ('/([0-9]+)/edit', EditPost)
+    ('/([0-9]+)/edit', EditPost),
+    ('/([0-9]+)/comment', AddComment)
     ],
     debug=True)

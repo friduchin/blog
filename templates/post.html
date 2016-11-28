@@ -11,7 +11,14 @@
 			</form>
 		{% endif %}
 		</div>
+		<div><a href="{{post.key().id()}}/comment">Comment</a></div>
 		<div><a href="/{{post.key().id()}}/delete">Delete</a></div>
 		<div><a href="/{{post.key().id()}}/edit">Edit</a></div>
 	</div>
+	{% for comment in comments %}
+		<div class="comment">
+			<p>{{comment.content}}</p>
+			<p>by {{comment.author}}</p>
+		</div>
+	{% endfor %}
 {% endblock %}
