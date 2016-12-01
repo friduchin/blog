@@ -40,7 +40,7 @@ def check_secure_val(secure_val):
 def make_salt(len = 5):
     return ''.join(random.choice(string.letters) for i in xrange(len))
 
-def make_pwd_hash(name, pwd, salt = None):
+def make_pwd_hash(name, pwd, salt=None):
     if not salt:
         salt = make_salt()
     h = hashlib.sha256(name + pwd + salt).hexdigest()
@@ -57,14 +57,14 @@ def valid_pwd(name, pwd, pwd_hash):
     return pwd_hash == make_pwd_hash(name, pwd, salt)
 
 class Post(db.Model):
-    subject = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
-    creator = db.IntegerProperty(required = True)
-    created = db.DateTimeProperty(auto_now_add = True)
+    subject = db.StringProperty(required=True)
+    content = db.TextProperty(required=True)
+    creator = db.IntegerProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
 
 class User(db.Model):
-    name = db.StringProperty(required = True)
-    pwd_hash = db.StringProperty(required = True)
+    name = db.StringProperty(required=True)
+    pwd_hash = db.StringProperty(required=True)
     email = db.StringProperty()
 
     @classmethod
@@ -83,11 +83,11 @@ class User(db.Model):
             return u
 
 class Likes(db.Model):
-    user = db.IntegerProperty(required = True)
+    user = db.IntegerProperty(required=True)
 
 class Comment(db.Model):
-    author = db.StringProperty(required = True)
-    content = db.TextProperty(required = True)
+    author = db.ReferenceProperty(User, required=True)
+    content = db.TextProperty(required=True)
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -151,7 +151,7 @@ class SignUp(Handler):
                     ' choose another username'))
             elif password == verify:
                 pwd_hash = make_pwd_hash(username, password)
-                u = User(name = username, pwd_hash = pwd_hash, email = email)
+                u = User(name=username, pwd_hash=pwd_hash, email=email)
                 u.put()
                 self.login(u)
                 self.redirect('/welcome')
@@ -194,7 +194,7 @@ class LogOut(Handler):
 class Welcome(Handler):
     def get(self):
         if self.user:
-            self.write('Hello, %s!' % self.user.name)
+            self.render('welcome.html', user=self.user)
         else:
             self.redirect('/signup')
 
@@ -217,7 +217,7 @@ class NewPost(Handler):
         creator = self.user.key().id()
 
         if subject and content:
-            p = Post(subject = subject, content = content, creator = creator)
+            p = Post(subject=subject, content=content, creator=creator)
             p.put()
             path = '/' + str(p.key().id())
 
@@ -252,7 +252,7 @@ class PostPage(Handler):
         if user_id == post.creator:
             self.write('You are not allowed to like your own post')
         else:
-            l = Likes.all().ancestor(post.key()).filter('user =', user_id).get()
+            l = Likes.all().ancestor(post).filter('user =', user_id).get()
             if l:
                 l.delete()
             else:
@@ -268,11 +268,21 @@ class DeletePost(Handler):
         elif not self.user.key().id() == post.creator:
             self.write('You are not allowed to delete this post')
         else:
-            self.render('delete-post.html', post_id=id)
+            message = 'Are you sure you want to delete this post?'
+            self.render(
+                'delete.html',
+                post_id=id,
+                message=message,
+                content=post.content)
 
     def post(self, id):
+        if not self.user:
+            self.redirect('/')
+
         post = Post.get_by_id(int(id))
         post.delete()
+
+        self.write('Post deleted. <a href="/">To main page</a>')
 
 class EditPost(Handler):
     def get(self, id):
@@ -285,10 +295,11 @@ class EditPost(Handler):
             subject = post.subject
             content = post.content
             self.render(
-                'edit-post.html',
+                'new-post.html',
                 subject=subject,
                 content=content,
-                post_id=id)
+                post_id=id,
+                edit=True)
 
     def post(self, id):
         if not self.user:
@@ -306,11 +317,12 @@ class EditPost(Handler):
         else:
             error = 'Please, enter both a subject and some content!'
             self.render(
-                'edit-post.html',
+                'new-post.html',
                 subject=subject,
                 content=content,
                 error=error,
-                id=id)
+                id=id,
+                edit=True)
 
 class AddComment(Handler):
     def get(self, post_id):
@@ -329,7 +341,7 @@ class AddComment(Handler):
             comment = Comment(
                 parent=Post.get_by_id(int(post_id)),
                 content=content,
-                author=self.user.name)
+                author=self.user)
             comment.put()
             self.redirect('/%s' % post_id)
         else:
@@ -338,6 +350,61 @@ class AddComment(Handler):
                 'comment.html',
                 content=content,
                 error=error)
+
+class EditComment(AddComment):
+    def get(self, post_id, id):
+        comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        if not self.user:
+            self.redirect("/login")
+        elif not self.user.key() == comment.author.key():
+            self.write('You are not allowed to edit this comment')
+        else:
+            content = comment.content
+            self.render(
+                'comment.html',
+                content=content,
+                edit=True,
+                post_id=post_id)
+
+    def post(self, post_id, id):
+        if not self.user:
+            self.redirect('/')
+
+        content = self.request.get('content')
+
+        if content:
+            c = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+            c.content = content
+            c.put()
+            self.redirect('/%s' % post_id)
+        else:
+            error = 'Please, enter some content!'
+            self.render(
+                'comment.html',
+                content=content,
+                error=error,
+                edit=True,
+                post_id=post_id)
+
+class DeleteComment(Handler):
+    def get(self, post_id, id):
+        comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        if not self.user:
+            self.redirect("/login")
+        elif not self.user.key() == comment.author.key():
+            self.write('You are not allowed to delete this comment')
+        else:
+            message = 'Are you sure you want to delete this comment?'
+            self.render(
+                'delete.html',
+                post_id=post_id,
+                message=message,
+                content=comment.content)
+
+    def post(self, post_id, id):
+        comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        comment.delete()
+        self.redirect('/%s' % post_id)
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
@@ -349,6 +416,8 @@ app = webapp2.WSGIApplication([
     ('/welcome', Welcome),
     ('/([0-9]+)/delete', DeletePost),
     ('/([0-9]+)/edit', EditPost),
-    ('/([0-9]+)/comment', AddComment)
+    ('/([0-9]+)/comment', AddComment),
+    ('/([0-9]+)/comment/([0-9]+)/edit', EditComment),
+    ('/([0-9]+)/comment/([0-9]+)/delete', DeleteComment)
     ],
     debug=True)

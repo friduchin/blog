@@ -7,4 +7,7 @@
 		<div class="error">{{error}}</div>
 		<input type="submit">
 	</form>
+	{% if edit %}
+		<a href="/{{post_id}}">Cancel and go back to post</a>
+	{% endif %}
 {% endblock %}

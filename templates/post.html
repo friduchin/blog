@@ -2,7 +2,7 @@
 
 {% block content %}
 	<h1>{{post.subject}}</h1>
-	<pre>{{post.content}}</pre>
+	<div>{{post.content}}</div>
 	<div class="actions">
 		<div>
 			{% if vote %}
@@ -18,7 +18,9 @@
 	{% for comment in comments %}
 		<div class="comment">
 			<p>{{comment.content}}</p>
-			<p>by {{comment.author}}</p>
+			<p>by {{comment.author.name}}</p>
+			<a href="/{{post.key().id()}}/comment/{{comment.key().id()}}/edit">Edit</a>
+			<a href="/{{post.key().id()}}/comment/{{comment.key().id()}}/delete">Delete</a>
 		</div>
 	{% endfor %}
 {% endblock %}
