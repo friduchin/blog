@@ -109,7 +109,7 @@ class Handler(webapp2.RequestHandler):
         return t.render(params)
 
     def render(self, template, **kw):
-        self.write(self.render_str(template, **kw))
+        self.write(self.render_str(template, logged_in=self.user, **kw))
 
     def set_secure_cookie(self, name, val):
         cookie_val = make_secure_val(val)
