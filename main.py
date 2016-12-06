@@ -13,91 +13,17 @@
 # limitations under the License.
 
 import os
-import random
-import hmac
-import string
-import hashlib
 
 import jinja2
 import webapp2
 
 from google.appengine.ext import db
+from models import User, Post, Comment, Likes
+from secure import *
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
-
-secret = 'q3F@k8X?'
-
-
-def make_secure_val(val):
-    return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
-
-
-def check_secure_val(secure_val):
-    val = secure_val.split('|')[0]
-    if secure_val == make_secure_val(val):
-        return val
-
-
-def make_salt(len=5):
-    return ''.join(random.choice(string.letters) for i in xrange(len))
-
-
-def make_pwd_hash(name, pwd, salt=None):
-    if not salt:
-        salt = make_salt()
-    h = hashlib.sha256(name + pwd + salt).hexdigest()
-    return '%s|%s' % (salt, h)
-
-
-def valid_cookie(cookie):
-    (id, hash) = cookie.split('|')
-    user = User.get_by_id(long(id))
-    if user:
-        return hash == User.get_by_id(long(id)).pwd_hash
-
-
-def valid_pwd(name, pwd, pwd_hash):
-    salt = pwd_hash.split('|')[0]
-    return pwd_hash == make_pwd_hash(name, pwd, salt)
-
-
-class Post(db.Model):
-    subject = db.StringProperty(required=True)
-    content = db.TextProperty(required=True)
-    creator = db.IntegerProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add=True)
-
-
-class User(db.Model):
-    name = db.StringProperty(required=True)
-    pwd_hash = db.StringProperty(required=True)
-    email = db.StringProperty()
-
-    @classmethod
-    def by_id(cls, uid):
-        return cls.get_by_id(uid)
-
-    @classmethod
-    def by_name(cls, name):
-        u = cls.all().filter('name =', name).get()
-        return u
-
-    @classmethod
-    def valid_login(cls, name, pw):
-        u = cls.by_name(name)
-        if u and valid_pwd(name, pw, u.pwd_hash):
-            return u
-
-
-class Likes(db.Model):
-    user = db.IntegerProperty(required=True)
-
-
-class Comment(db.Model):
-    author = db.ReferenceProperty(User, required=True)
-    content = db.TextProperty(required=True)
 
 
 class Handler(webapp2.RequestHandler):
