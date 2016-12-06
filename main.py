@@ -157,7 +157,7 @@ class NewPost(Handler):
 
     def post(self):
         if not self.user:
-            self.redirect('/blog')
+            return self.redirect('/login')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
@@ -193,7 +193,7 @@ class PostPage(Handler):
 
     def post(self, id):
         if not self.user:
-            self.redirect('/')
+            return self.redirect('/login')
 
         post = Post.get_by_id(int(id))
         user_id = self.user.key().id()
@@ -225,12 +225,11 @@ class DeletePost(Handler):
                 content=post.content)
 
     def post(self, id):
-        if not self.user:
-            self.redirect('/')
-
         post = Post.get_by_id(int(id))
-        post.delete()
+        if (not self.user) or (not self.user.key().id() == post.creator):
+            return self.redirect('/login')
 
+        post.delete()
         self.write('Post deleted. <a href="/">To main page</a>')
 
 
@@ -252,8 +251,9 @@ class EditPost(Handler):
                 edit=True)
 
     def post(self, id):
-        if not self.user:
-            self.redirect('/')
+        post = Post.get_by_id(int(id))
+        if (not self.user) or (not self.user.key().id() == post.creator):
+            return self.redirect('/login')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
@@ -284,7 +284,7 @@ class AddComment(Handler):
 
     def post(self, post_id):
         if not self.user:
-            self.redirect('/')
+            return self.redirect('/login')
 
         content = self.request.get('content')
 
@@ -319,8 +319,9 @@ class EditComment(AddComment):
                 post_id=post_id)
 
     def post(self, post_id, id):
-        if not self.user:
-            self.redirect('/')
+        comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        if (not self.user) or (not self.user.key() == comment.author.key()):
+            return self.redirect('/login')
 
         content = self.request.get('content')
 
@@ -356,6 +357,9 @@ class DeleteComment(Handler):
 
     def post(self, post_id, id):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        if (not self.user) or (not self.user.key() == comment.author.key()):
+            return self.redirect('/')
+
         comment.delete()
         self.redirect('/%s' % post_id)
 
