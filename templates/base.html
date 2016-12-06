@@ -1,63 +1,12 @@
 <!DOCTYPE html>
 
 <html>
-	<head>
-		<title>Blog</title>
-	</head>
-
-	<style type="text/css">
-		body {
-			width: 800px;
-			margin: auto;
-		}
-
-		textarea {
-			width: 400px;
-			height: 200px;
-		}
-
-		label {
-			display: block;
-			margin-top: 20px;
-		}
-
-		span {
-			color: red;
-		}
-
-		div {
-			margin: 10px 0;
-		}
-
-		.error {
-			color: red;
-			margin-top: 10px;
-			margin-bottom: 10px;
-		}
-
-		.post-subject {
-			border-bottom: 1px solid grey;
-			font-size: 20px;
-			margin-top: 20px;
-		}
-
-		.post-subject > a {
-			text-decoration: none;
-		}
-
-		.actions > div {
-			display: inline-block;
-		}
-
-		.comment {
-			border: 1px outset;
-			margin: 10px 0;
-			padding: 10px;
-		}
-	</style>
-
-	<body>
-		{% block content %}
-		{% endblock %}
-	</body>
+  <head>
+    <title>Blog</title>
+    <link rel="stylesheet" href="static/css/style.css">
+  </head>
+  <body>
+    {% block content %}
+    {% endblock %}
+  </body>
 </html>
