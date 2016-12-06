@@ -26,6 +26,7 @@ jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
 
 
+# Basic handler class to contain common methods needed for all pages handlers
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -115,6 +116,7 @@ class LogIn(Handler):
         password = self.request.get('password')
 
         if username and password:
+            # make sure the user exists && username and password match
             u = User.valid_login(username, password)
             if u:
                 self.login(u)
@@ -150,12 +152,14 @@ class NewPost(Handler):
             error=error)
 
     def get(self):
+        # only logged in users may add posts
         if self.user:
             self.render_new()
         else:
             self.redirect("/login")
 
     def post(self):
+        # only logged in users may add posts
         if not self.user:
             return self.redirect('/login')
 
@@ -178,11 +182,14 @@ class PostPage(Handler):
     def get(self, id):
         post = Post.get_by_id(int(id))
         comments = Comment.all().ancestor(post)
+        # make sure the post exists
         if not post:
             self.error(404)
             return
+        # only logged in users may like/unlike posts
         if self.user:
             user_id = self.user.key().id()
+            # a user may only like/unlike the post once
             if Likes.all().ancestor(post).filter('user =', user_id).get():
                 vote = 'unlike'
             else:
@@ -192,11 +199,13 @@ class PostPage(Handler):
             self.render('post.html', post=post, comments=comments)
 
     def post(self, id):
+        # only logged in users may like/unlike posts
         if not self.user:
             return self.redirect('/login')
 
         post = Post.get_by_id(int(id))
         user_id = self.user.key().id()
+        # users may not like their own posts
         if user_id == post.creator:
             self.write('You are not allowed to like your own post')
         else:
@@ -212,6 +221,7 @@ class PostPage(Handler):
 class DeletePost(Handler):
     def get(self, id):
         post = Post.get_by_id(int(id))
+        # users may only delete their own posts
         if not self.user:
             self.redirect("/login")
         elif not self.user.key().id() == post.creator:
@@ -226,6 +236,7 @@ class DeletePost(Handler):
 
     def post(self, id):
         post = Post.get_by_id(int(id))
+        # users may only delete their own posts
         if (not self.user) or (not self.user.key().id() == post.creator):
             return self.redirect('/login')
 
@@ -236,6 +247,7 @@ class DeletePost(Handler):
 class EditPost(Handler):
     def get(self, id):
         post = Post.get_by_id(int(id))
+        # users may only edit their own posts
         if not self.user:
             self.redirect("/login")
         elif not self.user.key().id() == post.creator:
@@ -252,6 +264,7 @@ class EditPost(Handler):
 
     def post(self, id):
         post = Post.get_by_id(int(id))
+        # users may only edit their own posts
         if (not self.user) or (not self.user.key().id() == post.creator):
             return self.redirect('/login')
 
@@ -277,12 +290,14 @@ class EditPost(Handler):
 
 class AddComment(Handler):
     def get(self, post_id):
+        # only logged in users may add comments
         if not self.user:
             self.redirect("/login")
         else:
             self.render('comment.html')
 
     def post(self, post_id):
+        # only logged in users may add comments
         if not self.user:
             return self.redirect('/login')
 
@@ -306,6 +321,7 @@ class AddComment(Handler):
 class EditComment(AddComment):
     def get(self, post_id, id):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        # users may only edit their own comments
         if not self.user:
             self.redirect("/login")
         elif not self.user.key() == comment.author.key():
@@ -320,6 +336,7 @@ class EditComment(AddComment):
 
     def post(self, post_id, id):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        # users may only edit their own comments
         if (not self.user) or (not self.user.key() == comment.author.key()):
             return self.redirect('/login')
 
@@ -343,6 +360,7 @@ class EditComment(AddComment):
 class DeleteComment(Handler):
     def get(self, post_id, id):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        # users may only delete their own comments
         if not self.user:
             self.redirect("/login")
         elif not self.user.key() == comment.author.key():
@@ -357,6 +375,7 @@ class DeleteComment(Handler):
 
     def post(self, post_id, id):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
+        # users may only delete their own comments
         if (not self.user) or (not self.user.key() == comment.author.key()):
             return self.redirect('/')
 
