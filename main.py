@@ -24,21 +24,25 @@ import webapp2
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
-                                autoescape = True)
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                               autoescape=True)
 
 secret = 'q3F@k8X?'
 
+
 def make_secure_val(val):
     return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
+
 
 def check_secure_val(secure_val):
     val = secure_val.split('|')[0]
     if secure_val == make_secure_val(val):
         return val
 
-def make_salt(len = 5):
+
+def make_salt(len=5):
     return ''.join(random.choice(string.letters) for i in xrange(len))
+
 
 def make_pwd_hash(name, pwd, salt=None):
     if not salt:
@@ -46,21 +50,25 @@ def make_pwd_hash(name, pwd, salt=None):
     h = hashlib.sha256(name + pwd + salt).hexdigest()
     return '%s|%s' % (salt, h)
 
+
 def valid_cookie(cookie):
     (id, hash) = cookie.split('|')
     user = User.get_by_id(long(id))
     if user:
         return hash == User.get_by_id(long(id)).pwd_hash
 
+
 def valid_pwd(name, pwd, pwd_hash):
     salt = pwd_hash.split('|')[0]
     return pwd_hash == make_pwd_hash(name, pwd, salt)
+
 
 class Post(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     creator = db.IntegerProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
+
 
 class User(db.Model):
     name = db.StringProperty(required=True)
@@ -82,12 +90,15 @@ class User(db.Model):
         if u and valid_pwd(name, pw, u.pwd_hash):
             return u
 
+
 class Likes(db.Model):
     user = db.IntegerProperty(required=True)
+
 
 class Comment(db.Model):
     author = db.ReferenceProperty(User, required=True)
     content = db.TextProperty(required=True)
+
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -121,18 +132,20 @@ class Handler(webapp2.RequestHandler):
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User.by_id(int(uid))
 
+
 class MainPage(Handler):
     def get(self):
         posts = db.GqlQuery('SELECT * FROM Post ORDER BY created DESC')
         self.render('main.html', posts=posts)
 
+
 class SignUp(Handler):
     def render_signup(self, username='', email='', error=''):
-         self.render(
+        self.render(
             'signup.html',
-            username = username,
-            email = email,
-            error = error)
+            username=username,
+            email=email,
+            error=error)
 
     def get(self):
         self.render_signup()
@@ -144,11 +157,11 @@ class SignUp(Handler):
         email = self.request.get('email')
 
         if username and password and verify:
-            #make sure the user doesn't already exist
+            # make sure the user doesn't already exist
             u = User.by_name(username)
             if u:
-                self.render_signup(error = ('That user already exists. Please,'
-                    ' choose another username'))
+                self.render_signup(error=('That user already exists. Please,'
+                                          ' choose another username'))
             elif password == verify:
                 pwd_hash = make_pwd_hash(username, password)
                 u = User(name=username, pwd_hash=pwd_hash, email=email)
@@ -162,6 +175,7 @@ class SignUp(Handler):
                 username,
                 email,
                 'Please, enter username, password and verify password')
+
 
 class LogIn(Handler):
     def render_login(self, username='', error=''):
@@ -186,10 +200,12 @@ class LogIn(Handler):
                 username,
                 'Please, enter both username and password')
 
+
 class LogOut(Handler):
     def get(self):
         self.logout()
         self.redirect('/signup')
+
 
 class Welcome(Handler):
     def get(self):
@@ -198,9 +214,14 @@ class Welcome(Handler):
         else:
             self.redirect('/signup')
 
+
 class NewPost(Handler):
     def render_new(self, subject='', content='', error=''):
-        self.render('new-post.html', subject=subject, content=content, error=error)
+        self.render(
+            'new-post.html',
+            subject=subject,
+            content=content,
+            error=error)
 
     def get(self):
         if self.user:
@@ -225,6 +246,7 @@ class NewPost(Handler):
         else:
             error = 'Please, enter both a subject and some content!'
             self.render_new(subject, content, error)
+
 
 class PostPage(Handler):
     def get(self, id):
@@ -260,6 +282,7 @@ class PostPage(Handler):
                 like.put()
             self.redirect('/%s' % id)
 
+
 class DeletePost(Handler):
     def get(self, id):
         post = Post.get_by_id(int(id))
@@ -283,6 +306,7 @@ class DeletePost(Handler):
         post.delete()
 
         self.write('Post deleted. <a href="/">To main page</a>')
+
 
 class EditPost(Handler):
     def get(self, id):
@@ -324,6 +348,7 @@ class EditPost(Handler):
                 id=id,
                 edit=True)
 
+
 class AddComment(Handler):
     def get(self, post_id):
         if not self.user:
@@ -350,6 +375,7 @@ class AddComment(Handler):
                 'comment.html',
                 content=content,
                 error=error)
+
 
 class EditComment(AddComment):
     def get(self, post_id, id):
@@ -386,6 +412,7 @@ class EditComment(AddComment):
                 edit=True,
                 post_id=post_id)
 
+
 class DeleteComment(Handler):
     def get(self, post_id, id):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
@@ -405,6 +432,7 @@ class DeleteComment(Handler):
         comment = Comment.get_by_id(int(id), Post.get_by_id(int(post_id)))
         comment.delete()
         self.redirect('/%s' % post_id)
+
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
